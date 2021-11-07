@@ -1,0 +1,283 @@
+<!--Make it so you have 5 seconds to complete each floor in the dungeon.
+    If you don't make it in time, you lose!
+    Make a gameover text with restart button that restarts the game.
+    Display the time counting down every 100 milliseconds.-->
+
+<html>
+
+<head>
+    <script>
+        let dungeon = [];
+        let player = { x: 0, y: 0, tile: null, floor: 0, hi_floor: 0, time: 5000, alive: true };
+        let deathtimer = null;
+        const playerTiles = "XS";
+
+        function initializeGame() {
+            player.x = 0;
+            player.y = 0;
+            player.floor = 0;
+            player.tile = null;
+            player.time = 5000;
+            player.alive = true;
+            initializeDungeon();
+            deathtimer = setInterval(updateTimer, 100);
+        }
+
+        function updateTimer() {
+            player.time -= 100;
+            analyzePlayerState();
+            updateScreen();
+        }
+
+        function initializeDungeon() {
+            for (let i = 0; i < 5; i++) {
+                dungeon[i] = [];
+                for (let n = 0; n < 5; n++) {
+                    dungeon[i][n] = "X";
+                }
+            }
+
+            player.tile = dungeon[player.x][player.y];
+            dungeon[player.x][player.y] = "O";
+            randomizeTiles("W", 5, "X", false);
+            randomizeTiles("S", 1, "X", true);
+            updateScreen();
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.keyCode == 37) {
+                moveLeft();
+            }
+            else if (event.keyCode == 38) {
+                moveUp();
+            }
+            else if (event.keyCode == 39) {
+                moveRight();
+            }
+            else if (event.keyCode == 40) {
+                moveDown();
+            }
+        }, true);
+
+        function checkTileDeadlock(x, y) {
+            // This needs an upgrade to ensure players can path to it
+            if (validTile(x - 1, y, playerTiles) || validTile(x + 1, y, playerTiles) || validTile(x, y - 1, playerTiles) || validTile(x, y + 1, playerTiles)) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+
+        function randomizeTiles(tile, count, validTiles, preventDeadlock) {
+            let x = getRandomInt(4);
+            let y = getRandomInt(4);
+            let valid = false;
+            for (let i = 0; i < count; i++) {
+                while (!valid) {
+                    // WARNING: This loop can go infinite if there aren't enough valid tiles to accept all tiles
+                    valid = true;
+                    x = getRandomInt(4);
+                    y = getRandomInt(4);
+
+                    if (!validTile(x, y, validTiles)) {
+                        valid = false;
+                    }
+
+                    if (preventDeadlock) {
+                        if (!checkTileDeadlock(x, y)) {
+                            valid = false;
+                        }
+                    }
+                }
+                valid = false;
+                dungeon[x][y] = tile;
+            }
+        }
+
+        function analyzePlayerState() {
+            if (player.tile == "S") {
+                player.floor += 1;
+                if (player.floor > player.hi_floor) {
+                    player.hi_floor = player.floor;
+                }
+                initializeDungeon();
+                clearInterval(deathtimer);
+                player.time = 5000;
+                deathtimer = setInterval(updateTimer, 100);
+            }
+            if (player.time <= 0) {
+                clearInterval(deathtimer);
+                player.alive = false;
+            }
+        }
+
+        function getRandomInt(max) {
+            return Math.floor(Math.random() * max);
+        }
+
+        function updateDungeon() {
+            //things
+        }
+
+        function updateScreen() {
+            document.getElementById("answer").innerHTML = arrayToString(dungeon);
+            document.getElementById("floor").innerHTML = "Floor: " + player.floor;
+            document.getElementById("high_floor").innerHTML = "HI-SCORE: " + player.hi_floor;
+            let timeString = "0";
+            if (player.time > 0) {
+                timeString = (player.time / 1000);
+            }
+            document.getElementById("time").innerHTML = "Time: " + timeString;
+
+            if (player.alive) {
+                document.getElementById("restartTxt").setAttribute("hidden", "")
+                document.getElementById("restartBtn").setAttribute("hidden", "")
+            }
+            else {
+                document.getElementById("restartTxt").removeAttribute("hidden")
+                document.getElementById("restartBtn").removeAttribute("hidden")
+            }
+        }
+
+        function arrayToString(array) {
+            let string = "";
+            for (let i = 0; i < array.length; i++) {
+                for (let n = 0; n < array[i].length; n++) {
+                    string += (array[n][i]);
+                }
+                string += "<br>";
+            }
+            string = string.trim();
+            return string;
+        }
+
+        function validTile(x, y, tiles) {
+            if (dungeon[x] !== undefined) {
+                if (dungeon[x][y] !== undefined && tiles.includes(dungeon[x][y])) {
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
+        }
+
+        function moveUp() {
+            if (player.alive && validTile(player.x, player.y - 1, playerTiles)) {
+                dungeon[player.x][player.y] = player.tile;
+                player.y -= 1;
+                player.tile = dungeon[player.x][player.y];
+                dungeon[player.x][player.y] = "O";
+                analyzePlayerState()
+                updateScreen();
+            }
+        }
+
+        function moveDown() {
+            if (player.alive && validTile(player.x, player.y + 1, playerTiles)) {
+                dungeon[player.x][player.y] = player.tile;
+                player.y += 1;
+                player.tile = dungeon[player.x][player.y];
+                dungeon[player.x][player.y] = "O";
+                analyzePlayerState()
+                updateScreen();
+            }
+        }
+
+        function moveLeft() {
+            if (player.alive && validTile(player.x - 1, player.y, playerTiles)) {
+                dungeon[player.x][player.y] = player.tile;
+                player.x -= 1;
+                player.tile = dungeon[player.x][player.y];
+                dungeon[player.x][player.y] = "O";
+                analyzePlayerState()
+                updateScreen();
+            }
+        }
+
+        function moveRight() {
+            if (player.alive && validTile(player.x + 1, player.y, playerTiles)) {
+                dungeon[player.x][player.y] = player.tile;
+                player.x += 1;
+                player.tile = dungeon[player.x][player.y];
+                dungeon[player.x][player.y] = "O";
+                analyzePlayerState()
+                updateScreen();
+            }
+        }
+
+    </script>
+    <style>
+        .grid {
+            display: grid;
+            grid-gap: 1px;
+            grid-template-columns: repeat(3, 80px);
+        }
+
+        div>.btn {
+            padding: 10px;
+            background-color: #ccc;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        div>.space {
+            padding: 10px;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        .noselect {
+            -webkit-touch-callout: none;
+            /* iOS Safari */
+            -webkit-user-select: none;
+            /* Safari */
+            -khtml-user-select: none;
+            /* Konqueror HTML */
+            -moz-user-select: none;
+            /* Old versions of Firefox */
+            -ms-user-select: none;
+            /* Internet Explorer/Edge */
+            user-select: none;
+            /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        }
+    </style>
+</head>
+
+<body onload="initializeGame()">
+    <div class="grid">
+        <div class="space"></div>
+        <div class="btn noselect" onclick="moveUp()">UP</div>
+        <div class="space"></div>
+        <div class="btn noselect" onclick="moveLeft()">LEFT</div>
+        <div class="space"></div>
+        <div class="btn noselect" onclick="moveRight()">RIGHT</div>
+        <div class="space"></div>
+        <div class="btn noselect" onclick="moveDown()">DOWN</div>
+        <div class="space"></div>
+    </div>
+    <br>
+    <br>
+    <div id="answer"></div>
+    <br>
+    <br>
+    <div id="floor"></div>
+    <div id="high_floor"></div>
+    <br>
+    <div id="time"></div>
+    <br>
+    <br>
+    <br>
+    <div id="restartTxt" hidden=!isVisible>You're Too Slow!</div>
+    <div class="grid">
+        <div class="btn noselect" id="restartBtn" hidden=!isVisible onclick="initializeGame()">
+            Restart</div>
+    </div>
+
+</body>
+
+</html>
